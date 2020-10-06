@@ -1,4 +1,4 @@
-FROM ubuntu:18.04
+FROM centos:centos7
 # Master build file for pangeo images
 
 # Run this section as root
@@ -9,8 +9,7 @@ ENV CONDA_VERSION=4.8.3-4 \
     NB_USER=jovyan \
     NB_UID=2005 \
     SHELL=/bin/bash \
-    LANG=C.UTF-8  \
-    LC_ALL=C.UTF-8 \
+    LANG=en_US.UTF-8  \
     CONDA_DIR=/srv/conda
 
 ENV NB_PYTHON_PREFIX=${CONDA_DIR}/envs/${CONDA_ENV} \
@@ -36,14 +35,20 @@ RUN echo "add conda environment to bashrc" \
 
 # SEE: https://github.com/phusion/baseimage-docker/issues/58
 # and https://github.com/phusion/baseimage-docker/issues/319
-ARG DEBIAN_FRONTEND=noninteractive
 
-RUN echo "Installing Apt-get packages..." \
-    && apt-get update --fix-missing \
-    && apt-get install -y apt-utils 2> /dev/null \
-    && apt-get install -y wget \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+ Install basic requirements.
+COPY scripts/yum_clean_all /opt/docker/bin/
+RUN echo "Installing yum packages..." \
+RUN yum update -y  \
+    && yum install -y \
+        bzip2 \
+        sudo \
+        tar \
+        which \
+        wget
+    && yum clean all \
+    &&   rm -rf /var/cache/yum/*
+
 # ========================
 
 USER ${NB_USER}
@@ -81,11 +86,10 @@ ONBUILD RUN echo "Checking for 'binder' or '.binder' subfolder" \
         echo "Using './' build context" \
         ; fi
 
-ONBUILD ARG DEBIAN_FRONTEND=noninteractive
-ONBUILD RUN echo "Checking for 'apt.txt'..." \
+ONBUILD RUN echo "Checking for 'yum.txt'..." \
         ; [ -d binder ] && cd binder \
         ; [ -d .binder ] && cd .binder \
-        ; if test -f "apt.txt" ; then \
+        ; if test -f "yum.txt" ; then \
         apt-get update --fix-missing \
         && xargs -a apt.txt apt-get install -y \
         && apt-get clean \

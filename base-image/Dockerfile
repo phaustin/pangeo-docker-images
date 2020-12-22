@@ -1,11 +1,11 @@
-FROM ubuntu:18.04
+FROM ubuntu:20.04
 # Master build file for pangeo images
 
 # Run this section as root
 # try to keep conda version in sync with repo2docker
 # ========================
-ENV CONDA_VERSION=4.8.3-5 \
-    CONDA_ENV=notebook \
+ENV CONDA_VERSION=4.9.2-4 \
+    CONDA_ENV=dashboard \
     NB_USER=jovyan \
     NB_UID=2005 \
     SHELL=/bin/bash \
@@ -30,12 +30,14 @@ RUN echo "Creating ${NB_USER} user..." \
 # https://github.com/moby/moby/issues/35018
 #COPY --chown=${NB_USER}:${NB_USER} . ${HOME}
 COPY --chown=jovyan:jovyan . /srv
-
 RUN echo "add conda environment to bashrc" \
     && cat /srv/bashrc_conda.txt >> ${HOME}/.bashrc
 
 # SEE: https://github.com/phusion/baseimage-docker/issues/58
 # and https://github.com/phusion/baseimage-docker/issues/319
+#
+#
+#
 ARG DEBIAN_FRONTEND=noninteractive
 
 RUN echo "Installing Apt-get packages..." \
@@ -62,9 +64,9 @@ RUN echo "Copying configuration files..." \
     && mv /srv/condarc.yml ${CONDA_DIR}/.condarc \
     && mv /srv/dask_config.yml ${CONDA_DIR}/etc/dask.yml
 
-EXPOSE 8888
+EXPOSE 8000
 ENTRYPOINT ["/srv/start"]
-#CMD ["jupyter", "notebook", "--ip", "0.0.0.0"]
+#CMD [ "gunicorn", "--workers=5", "--threads=1", "-b 0.0.0.0:8000", "app:server"]
 
 # Only run these if used as a base image
 # ----------------------
@@ -99,6 +101,8 @@ ONBUILD USER ${NB_USER}
 # note that ...bokeh/server/static doesn't exist if bokeh not in environment
 # create it so find doesn't fail
 #
+ONBUILD RUN echo "pha was here ${cwd}"
+ONBUILD RUN ls -ltd *
 ONBUILD RUN echo "Checking for 'conda-linux-64.lock' or 'environment.yml'..." \
         ; [ -d binder ] && cd binder \
         ; [ -d .binder ] && cd .binder \
